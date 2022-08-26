@@ -1,15 +1,9 @@
 from .autoencoder import CXRAutoencoder
 import torch
 
-def get_model(global_avg_pool, z_dim, z_cac, input_size=(2,3,448,448),n_class=None, ckpt_path = None):
+def get_model(ckpt_path = None):
 
-    model = CXRAutoencoder(
-          global_avg_pool=global_avg_pool, 
-          z_dim = z_dim, 
-          z_cac = z_cac,
-          input_shape = input_size,
-          n_class = n_class
-    )
+    model = AgePredictor()
 
 
     if ckpt_path is not None:
