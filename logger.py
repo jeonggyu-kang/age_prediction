@@ -55,7 +55,7 @@ class SaveManager:
             self.best_acc = acc
             return
 
-        if self.best_acc < acc:
+        if self.best_acc > acc:
             print('best_model update: {}'.format(acc))
             self.best_model = copy.deepcopy(model)
             self.best_acc = acc

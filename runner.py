@@ -13,13 +13,12 @@ def trainer(
     model, 
     train_loader, 
     test_loader, 
-    loss_recon,
+    loss_mse,
     loss_ce,
     optimizer,
     scheduler,
     meta, 
     writer = None,
-    visualizer = None
 ):
 
     save_every = meta['save_every']
@@ -28,18 +27,16 @@ def trainer(
 
 
     for ep in range(1, max_epoch+1):
-        train(ep, max_epoch, model, train_loader, loss_recon, loss_ce, optimizer, writer, print_every, visualizer=visualizer)
+        train(ep, max_epoch, model, train_loader, loss_mse, loss_ce, optimizer, writer, print_every)
         if scheduler is not None:
             scheduler.step()
 
-
+        ''' # TODO implement
         if ep % test_every == 0:
-            loss = test(ep, max_epoch, model, test_loader, writer, loss_recon = loss_recon, loss_ce=loss_ce, visualizer=visualizer)
-            if loss_ce is None:
-                loss *= -1
-
+            error = test(ep, max_epoch, model, test_loader, writer, loss_mse)
             
-            writer.update(model, loss)
+            writer.update(model, error)
+        '''
         
         if ep == 1 or ep % save_every == 0:
             writer.save(model, ep)
@@ -69,18 +66,24 @@ def tester(
 
 
 
-def train(ep, max_epoch, model, train_loader, loss_recon, loss_ce, optimizer, writer, _print_every, visualizer = None):
+def train(ep, max_epoch, model, train_loader, loss_mse, loss_ce, optimizer, writer, _print_every):
     model.train()
 
-    epoch_loss = 0.0
-    mean_loss = 0.0
+    epoch_error = 0.0
+    total_loss = 0.0
+    mse_loss = 0.0
+    ce_loss = 0.0
 
     print_every = len(train_loader) // _print_every     
     if print_every == 0:
         print_every = 1
 
-    preds = []
-    gt = []
+    score_dict = {
+        'pred_age' : [],
+        'gt_age' : [],
+        'pred_sex' : [],
+        'gt_sex' : [],
+    }
 
     step = 0
     step_cnt = 1
@@ -88,71 +91,72 @@ def train(ep, max_epoch, model, train_loader, loss_recon, loss_ce, optimizer, wr
     global_step = (ep - 1) * len(train_loader)
     local_step = 0
 
-    vis_dict = {
-        'latent_code' : [],
-        'label' : []
-    }
 
     for i, batch in enumerate(train_loader):
-        x, y = batch
-        x = x.cuda()
-        y = y.cuda()
+        image = batch['image'].cuda()
+        gt_age = batch['gt_age'].cuda()
+        gt_sex = batch['gt_sex'].cuda()
 
-        output_dict = model(x)
+        output_dict = model(image)
 
         loss = 0.0
 
-        if loss_recon is not None:
-            loss += loss_recon(output_dict['x_hat'], x)
-        if loss_ce is not None:
-            loss += loss_ce(output_dict['y_hat'], y)
-            preds.append(output_dict['y_hat'])
-            gt.append(y)
+
+        loss_mse_value = loss_mse(output_dict['age_hat'], gt_age)
+        loss_ce_value  = loss_ce(output_dict['sex_hat'], gt_sex)
+
+        loss = loss_mse_value + 0.9 * loss_ce_value
+
+        
+        
+        # preds.append(output_dict['y_hat'])
+        # gt.append(y)
 
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        mean_loss += loss.item()
-        epoch_loss += loss.item()
+        total_loss += loss.item()
+        mse_loss += loss_mse_value.item()
+        ce_loss += loss_ce_value.item()
+        epoch_error += loss_mse_value.item()
+
+
         step += 1
         global_step += 1
         local_step += 1
 
-        vis_dict['latent_code'].append(output_dict['latent_code'].detach().cpu())
-        vis_dict['label'].append(y.cpu())
-
 
         if (i+1) % print_every == 0:
-            mean_loss /= step
-            writer.add_scalar('train/loss', mean_loss, global_step)
-            print('Epoch [{}/{}] Step[{}/{}] Loss: {:.4f}'.format(
-                ep, max_epoch, step_cnt, _print_every, mean_loss))
+            total_loss /= step
+            mse_loss /= step
+            ce_loss /= step
+
+            writer.add_scalar('train/total_loss', total_loss, global_step)
+            writer.add_scalar('train/mse_loss', mse_loss, global_step)
+            writer.add_scalar('train/ce_loss', ce_loss, global_step)
+
+            print('Epoch [{}/{}] Step[{}/{}] Total-Loss: {:.4f} MSE-Loss: {:.4f} CE-Loss: {:.4f}'.format(
+                ep, max_epoch, step_cnt, _print_every, total_loss, mse_loss, ce_loss))
             
-            mean_loss = 0.0
+            total_loss = 0.0
+            mse_loss = 0.0
+            ce_loss = 0.0
             step = 0
             step_cnt += 1
 
-            # add_img
-            x_hat = output_dict['x_hat']
-            recon_image = vutils.make_grid(x_hat.detach().cpu().clamp(0.0,1.0), normalize=True, scale_each=True)
-            gt_image    = vutils.make_grid(x.detach().cpu().clamp(0.0,1.0), normalize=True, scale_each=True)
 
-            if writer is not None:
-                writer.add_image('train/recon_img', recon_image, global_step)
-                writer.add_image('train/gt_img', gt_image, global_step)
-
-    print ('Train Summary[{},{}] : Loss: {:.4f}'.format(ep, max_epoch, epoch_loss/local_step))
+    print ('Train Summary[{},{}] : MSE-Error: {:.4f}'.format(ep, max_epoch, epoch_error/local_step))
+    writer.add_scalar('train/sex-error', epoch-error, ep)
 
 
-    if loss_ce is not None:
-        preds = torch.cat(preds)
-        gt = torch.cat(gt)
+    preds = torch.cat(score_dict['pred_sex'])
+    gt = torch.cat(score_dict['gt_sex'])
 
-        acc = torch.mean((preds.argmax(dim=1) == gt).float())
-        print ('Train Summary[{},{}] : Acc: {:.4f}'.format(ep, max_epoch, acc))
-        writer.add_scalar('train/acc', acc, ep)
+    acc = torch.mean((preds.argmax(dim=1) == gt).float())
+    print ('Train Summary[{},{}] : Age-Acc: {:.4f}'.format(ep, max_epoch, acc))
+    writer.add_scalar('train/age-acc', acc, ep)
 
 
 @torch.no_grad() # stop calculating gradient
