@@ -167,6 +167,43 @@ class AGEDataset(Dataset):
             return ret
         else:
             return x, y
+
+
+class AgeSexDataset(AGEDataset):
+    def __init__(self, df, data_dir, transform, is_training=False, csv=False):
+        super().__init__(df, data_dir, transform, is_training, csv)
+
+    def __getitem__(self, idx):
+
+        # notation (age: y1, sex:y2 (0: female, 1:male))
+        dcm_path, y1, y2 = self.data[idx] # score dynamic range (600-3000)
+
+        # age normalization
+        y1 = (y1 - self.range_min) / self.range_max
+
+        array_path = os.path.join(self.data_dir,dcm_path.replace('.dcm','.npy'))
+
+        image = np.load(array_path)
+
+        image = image - image.min()
+        image = image / image.max()
+
+
+        transformed = self.transform({'image':image})
+        image = transformed['image']
+        x = torch.cat([image,image, image], dim = 0).to(torch.float32)
+
+        y1 = torch.FloatTensor([y1])
+        y2 = torch.LongTensor([y2]).squeeze()
+
+        ret = {
+            'image' : x,
+            'gt_age' :y1,
+            'gt_sex' : y2,
+            'f_name' : array_path
+        }
+
+        return ret
     
 if __name__ == '__main__':
     pass
