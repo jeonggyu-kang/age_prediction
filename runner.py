@@ -31,12 +31,12 @@ def trainer(
         if scheduler is not None:
             scheduler.step()
 
-        ''' # TODO implement
+        
         if ep % test_every == 0:
             error = test(ep, max_epoch, model, test_loader, writer, loss_mse)
             
             writer.update(model, error)
-        '''
+       
         
         if ep == 1 or ep % save_every == 0:
             writer.save(model, ep)
@@ -99,8 +99,8 @@ def train(ep, max_epoch, model, train_loader, loss_mse, loss_ce, optimizer, writ
 
         output_dict = model(image)
 
-        loss = 0.0
-
+        score_dict['pred_sex'].append(output_dict['sex_hat'].cpu())
+        score_dict['gt_sex'].append(gt_sex.cpu()) 
 
         loss_mse_value = loss_mse(output_dict['age_hat'], gt_age)
         loss_ce_value  = loss_ce(output_dict['sex_hat'], gt_sex)
@@ -148,19 +148,18 @@ def train(ep, max_epoch, model, train_loader, loss_mse, loss_ce, optimizer, writ
 
 
     print ('Train Summary[{},{}] : MSE-Error: {:.4f}'.format(ep, max_epoch, epoch_error/local_step))
-    writer.add_scalar('train/sex-error', epoch-error, ep)
-
+    writer.add_scalar('train/age-mse-error', epoch_error/local_step, ep)
 
     preds = torch.cat(score_dict['pred_sex'])
     gt = torch.cat(score_dict['gt_sex'])
 
     acc = torch.mean((preds.argmax(dim=1) == gt).float())
-    print ('Train Summary[{},{}] : Age-Acc: {:.4f}'.format(ep, max_epoch, acc))
-    writer.add_scalar('train/age-acc', acc, ep)
+    print ('Train Summary[{},{}] : Sex-Acc: {:.4f}'.format(ep, max_epoch, acc))
+    writer.add_scalar('train/sex-acc', acc, ep)
 
 
 @torch.no_grad() # stop calculating gradient
-def test(ep, max_epoch, model, test_loader, writer, loss_recon=None, loss_ce = None, visualizer = None,  pbar=None, confusion_matrix = False):
+def test(ep, max_epoch, model, test_loader, writer, loss_mse, confusion_matrix=False):
     model.eval()
 
     epoch_loss = 0.0
@@ -175,67 +174,45 @@ def test(ep, max_epoch, model, test_loader, writer, loss_recon=None, loss_ce = N
         ep = 1
 
 
-    preds = []
-    gt = []
+    score_dict = {
+        'pred_sex' : [],
+        'gt_sex' : [],
+    }
+     
+    for i, batch in enumerate(test_loader):
+        image = batch['image'].cuda()
+        gt_age = batch['gt_age'].cuda()
+        gt_sex = batch['gt_sex'].cuda()
 
-    latent_dict = {'latent_code': [], 'label': [] }
+        output_dict = model(image)
 
-    
-    for idx, batch in enumerate(test_loader):
-        x, y = batch
-        x = x.cuda()
-        y = y.cuda()
+        score_dict['pred_sex'].append(output_dict['sex_hat'].cpu())
+        score_dict['gt_sex'].append(gt_sex.cpu())
 
-        output_dict = model(x)
+        loss_mse_value = loss_mse(output_dict['age_hat'], gt_age)
+        epoch_loss += loss_mse_value.item()
+        local_step +=1
 
-        if loss_recon is not None:
-            loss = loss_recon(output_dict['x_hat'], x)
-            epoch_loss += loss.item()
+    # mse loss value (return)
+    epoch_loss /= local_step
+    print ('Test Summary[{},{}] : MSE-Loss: {:.4f}'.format(ep, max_epoch, epoch_loss))
+    writer.add_scalar('train/age-loss', epoch_loss, ep)
 
-        if loss_ce is not None:
-            preds.append(output_dict['y_hat'])
-            gt.append(y)
+    # acc
+    preds = torch.cat(score_dict['pred_sex'])
+    gt = torch.cat(score_dict['gt_sex'])
 
+    acc = torch.mean((preds.argmax(dim=1) == gt).float())
+    print ('Test Summary[{}/{}] : Sex-Acc: {:.4f}'.format(ep, max_epoch, acc))
+    writer.add_scalar('test/age-acc', acc, ep)
 
-        local_step += 1
-        
-        if idx % 10 ==0:
-            x_hat = output_dict['x_hat']
-            recon_image = vutils.make_grid(x_hat.detach().cpu().clamp(0.0,1.0), normalize=True, scale_each=True)
-            gt_image    = vutils.make_grid(x.cpu().clamp(0.0,1.0), normalize=True, scale_each=True)
-
-            if writer is not None:
-                writer.add_image('test/recon_img', recon_image, global_step)
-                writer.add_image('test/gt_img', gt_image, global_step)
-
-
-        if pbar is not None:
-            pbar.update()
-
-    epoch_loss /=local_step
-    print ('Test Summary[{}/{}] : Loss {:.4f}'.format(ep, max_epoch, epoch_loss))
-    writer.add_scalar('test/loss', epoch_loss, (ep-1) * len(test_loader))
-
-    if visualizer is not None:
-        umap_img = visualizer(latent_dict)
-        writer.add_image('test/umap', umap_img, ep)
-
-    if loss_ce is not None or confusion_matrix:
-        preds = torch.cat(preds)
-        gt = torch.cat(gt)
-
-        acc = torch.mean((preds.argmax(dim=1) == gt).float())
-        print ('Test Summary[{},{}] : Acc: {:.4f}'.format(ep, max_epoch, acc))
-        writer.add_scalar('test/acc', acc, ep)
-
+    if confusion_matrix:
         cm_image = get_confusion_matrix_image(preds.detach().cpu(), gt.cpu(), normalize=False)
         writer.add_image('test/unnorm_cm', cm_image, ep)
 
         cm_image = get_confusion_matrix_image(preds.detach().cpu(), gt.cpu(), normalize=True)
         writer.add_image('test/norm_cm', cm_image, ep)
 
-        return acc  
-       
     return epoch_loss
 
 
