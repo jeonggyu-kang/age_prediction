@@ -1,4 +1,5 @@
-from .autoencoder import CXRAutoencoder
+# from .autoencoder import CXRAutoencoder
+from .age_predictor import AgePredictor
 import torch
 
 def get_model(ckpt_path = None):

@@ -128,6 +128,7 @@ class AGEDataset(Dataset):
         self.csv = csv
 
         # TODO: modify
+ 
         self.range_min = 1
         self.range_max = 100
         self.range_max -= self.range_min
@@ -179,6 +180,7 @@ class AgeSexDataset(AGEDataset):
         dcm_path, y1, y2 = self.data[idx] # score dynamic range (600-3000)
 
         # age normalization
+        actual_y1 = y1
         y1 = (y1 - self.range_min) / self.range_max
 
         array_path = os.path.join(self.data_dir,dcm_path.replace('.dcm','.npy'))
@@ -199,6 +201,7 @@ class AgeSexDataset(AGEDataset):
         ret = {
             'image' : x,
             'gt_age' :y1,
+            'gt_age_int' : actual_y1,
             'gt_sex' : y2,
             'f_name' : array_path
         }

@@ -2,20 +2,19 @@ import os
 import pandas as pd
 import random
 
-source_file = "./cxr_clinical.csv"
+source_file = "../project_classifiers/data/age.csv"
 dest_dir = "./data"
-input_file = "file_name"
-outcome = "age"
 train_ratio = 70
+
 
 
 df = pd.read_csv(source_file)
 
-df = df.loc[:, [input_file, outcome]]
+df = df.loc[:, ['f', 'a', 's']]
 df.dropna(inplace = True)
 
-df.rename(columns = {input_file : 'dcm_path' , outcome : 'score' }, inplace = True)
-
+#df.rename(columns = {'input_file' : 'dcm_path' , 'age' : 'age', 'sex' : 'sex' }, inplace = True)
+df.rename(columns = {'f' : 'dcm_path'  }, inplace = True)
 training = []
 for i in range (len(df)):
     num = random.randint(1,1000001)
@@ -31,7 +30,7 @@ row_cut = int(len(df)*train_ratio/100)
 
 # df.reset_index()
 
-df = df.loc[:, ['dcm_path', 'score']]
+df = df.loc[:, ['dcm_path', 'a', 's']]
 
 df_training = df.iloc[:row_cut,:]
 df_test     = df.iloc[row_cut:,:]

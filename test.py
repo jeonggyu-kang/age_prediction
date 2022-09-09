@@ -7,7 +7,7 @@ from models import get_model
 from logger import get_logger 
 from runner import tester 
 from dataset import get_dataloader
-from visualizer import Umap
+# from visualizer import Umap
 
 def main():
     parser = argparse.ArgumentParser()
@@ -28,18 +28,13 @@ def main():
     
 
     ckpt_path = os.path.join(_args.log_root, 'best.pt')
-    model = get_model(
-        global_avg_pool = args['global_avg_pool'],
-        z_dim = args['z_dim'],
-        z_cac = args['z_cac'],
-        input_size = (2, 3, *args['image_size']),
-        n_class = args['n_class'],
-        ckpt_path = ckpt_path
-        )
 
-        
+    model = get_model(ckpt_path=ckpt_path)
+
+            
 
     mode = 'test'
+    
     test_loader = get_dataloader(
         dataset = args['dataset'],
         data_dir = args[mode]['img_dir'],
@@ -51,10 +46,11 @@ def main():
         csv = False
     )
 
-    save_path = os.path.join(__args.log_root, 'eval')
+    save_path = os.path.join(_args.log_root, 'eval')
     writer = get_logger(save_path)
 
-    visualizer = Umap()
+    # visualizer = Umap()
+    visualizer = None
 
 
     tester(

@@ -53,11 +53,10 @@ def tester(
 
 ):
     pbar=tqdm(total=len(test_loader))
+    print('Dataset length: {}'.format(len(test_loader)))
     acc = test(
         None,None,
         model, test_loader, writer,
-        visualizer = visualizer,
-        pbar = pbar,
         confusion_matrix = confusion_matrix,
     )
     
@@ -159,7 +158,7 @@ def train(ep, max_epoch, model, train_loader, loss_mse, loss_ce, optimizer, writ
 
 
 @torch.no_grad() # stop calculating gradient
-def test(ep, max_epoch, model, test_loader, writer, loss_mse, confusion_matrix=False):
+def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_matrix=False):
     model.eval()
 
     epoch_loss = 0.0
@@ -189,9 +188,20 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse, confusion_matrix=F
         score_dict['pred_sex'].append(output_dict['sex_hat'].cpu())
         score_dict['gt_sex'].append(gt_sex.cpu())
 
-        loss_mse_value = loss_mse(output_dict['age_hat'], gt_age)
-        epoch_loss += loss_mse_value.item()
-        local_step +=1
+        if loss_mse is not None:
+            loss_mse_value = loss_mse(output_dict['age_hat'], gt_age)
+            epoch_loss += loss_mse_value.item()
+            local_step +=1
+        else:
+            B, _, _, _ = image.shape
+            for bi in range(B):
+                age_gt  = batch['gt_age_int'][bi].item()
+                age_hat = int((output_dict['age_hat'][bi] * 99 + 1. + 0.5).item())
+                diff = abs(age_gt - age_hat)
+                print('pred: {},  gt: {}'.format(age_hat, age_gt))
+                epoch_loss += diff 
+                local_step +=1
+            
 
     # mse loss value (return)
     epoch_loss /= local_step

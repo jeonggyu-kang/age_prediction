@@ -71,13 +71,13 @@ data_dict = dict(
     workers_per_gpu = 1,
 
     train = dict(
-        img_dir = '/mnt/project_classifiers/data',
-        ann_file = '/mnt/project_classifiers/data/train_dataset_cac.parquet',
+        img_dir = '/home/jg/Projects/project_classifiers/data',
+        ann_file = '/home/jg/Projects/project_classifiers/data/train_dataset_cac.parquet',
         pipeline = train_pipeline
     ),
     test = dict(
-        img_dir = '/mnt/project_classifiers/data',
-        ann_file = '/mnt/project_classifiers/data/test_dataset_cac.parquet',
+        img_dir = '/home/jg/Projects/project_classifiers/data',
+        ann_file = '/home/jg/Projects/age_prediction/data/test_dataset_cac.parquet',
         pipeline = test_pipeline
     ),
 )
