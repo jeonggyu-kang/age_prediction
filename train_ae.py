@@ -11,7 +11,7 @@ from config import get_hyperparameters
 from dataset import get_dataloader
 
 from logger import get_logger
-from runner import trainer
+from runner_ae import trainer_ae
 from visualizer import Umap
 
 
@@ -19,7 +19,12 @@ def main():
     # TODO : apply easydict
     args = get_hyperparameters()                 #             
 
-    model = get_model(model_name=args['model_name'])
+    model = get_model(
+        model_name = args['model_name'],
+        z_common = args['z_common'],
+        z_age = args['z_age'],
+        z_sex = args['z_sex']
+        )
     optimizer = torch.optim.Adam(model.parameters(), lr=args['learning_rate'])
     loss_ce = torch.nn.CrossEntropyLoss()
     loss_mse = torch.nn.MSELoss()       
@@ -59,7 +64,7 @@ def main():
     
     writer = get_logger(args['save_root'] )
 
-    trainer(                                      # from runner.py
+    trainer_ae(                                      # from runner.py
         max_epoch = args['max_epoch'],
         model = model,
         train_loader = train_loader,

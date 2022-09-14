@@ -81,6 +81,7 @@ class CXRAutoencoder2(nn.Module):
             'latent_code' : latent_code
         }
 
+
         return output_dict
 
 if __name__ == '__main__':

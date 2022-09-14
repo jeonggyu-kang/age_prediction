@@ -1,10 +1,15 @@
-# from .autoencoder import CXRAutoencoder
+from .autoencoder import CXRAutoencoder2
 from .age_predictor import AgePredictor
 import torch
 
-def get_model(ckpt_path = None):
-
-    model = AgePredictor()
+def get_model(model_name, ckpt_path = None, **kwargs):
+    if model_name.lower() == "AgePredictor".lower():
+        model = AgePredictor()
+    elif model_name.lower() == "cxrautoencoder2":
+        model = CXRAutoencoder2(**kwargs)
+    else:
+        print ('can not find model', model_name)
+        exit(1)
 
 
     if ckpt_path is not None:

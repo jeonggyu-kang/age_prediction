@@ -17,14 +17,19 @@ _IMAGE_WIDTH = 896
 _IMAGE_HEIGHT = 896
 
 # model-related params
-model_dict = dict(                
+model_dict = dict(   
+    # model_name = "AgePredictor",
+    model_name = "CXRAutoencoder2", 
+    z_common = 48,
+    z_age = 24,
+    z_sex = 24,           
     max_epoch = 200,
     learning_rate = 1e-4,
     # mile_stone = None,
     mile_stone = [150, 180],
     decay_rate = 0.1,
     image_size = (_IMAGE_WIDTH, _IMAGE_HEIGHT),   # width, height
-    extra = ['autoencoder-test']    
+    extra = ['latent_dim_bigger_size_to_24_24']    
 )
 
 train_pipeline = [
@@ -67,17 +72,17 @@ test_pipeline = [
 data_dict = dict(
     dataset = 'AgeSexDataset',
     save_root = './work_dir',
-    batch_size = 2,
+    batch_size = 14,
     workers_per_gpu = 1,
 
     train = dict(
-        img_dir = '/home/jg/Projects/project_classifiers/data',
-        ann_file = '/home/jg/Projects/project_classifiers/data/train_dataset_cac.parquet',
+        img_dir = '/mnt/project_classifiers/data',
+        ann_file = '/mnt/project_classifiers/data/train_dataset_cac.parquet',
         pipeline = train_pipeline
     ),
     test = dict(
-        img_dir = '/home/jg/Projects/project_classifiers/data',
-        ann_file = '/home/jg/Projects/age_prediction/data/test_dataset_cac.parquet',
+        img_dir = '/mnt/project_classifiers/data',
+        ann_file = '/mnt/project_classifiers/data/test_dataset_cac.parquet',
         pipeline = test_pipeline
     ),
 )
