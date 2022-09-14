@@ -45,7 +45,7 @@ def trainer_ae(
     writer.close()
     
 
-def tester(
+def tester_ae(
     model,
     test_loader,
     writer,
@@ -171,6 +171,7 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
     model.eval()
 
     epoch_loss = 0.0
+    epoch_recon_loss = 0.0
     local_step = 0
 
     if ep is not None:
@@ -187,12 +188,15 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
         'gt_sex' : [],
     }
      
+    loss_mse2 = torch.nn.MSELoss() 
     for i, batch in enumerate(test_loader):
         image = batch['image'].cuda()
         gt_age = batch['gt_age'].cuda()
         gt_sex = batch['gt_sex'].cuda()
 
         output_dict = model(image)
+
+        epoch_recon_loss += loss_mse2(output_dict['x_hat'], image)
 
         score_dict['pred_sex'].append(output_dict['y2_hat'].cpu())
         score_dict['gt_sex'].append(gt_sex.cpu())
@@ -207,15 +211,20 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
                 age_gt  = batch['gt_age_int'][bi].item()
                 age_hat = int((output_dict['y1_hat'][bi] * 99 + 1. + 0.5).item())
                 diff = abs(age_gt - age_hat)
-                print('pred: {},  gt: {}'.format(age_hat, age_gt))
+                # print('pred: {},  gt: {}'.format(age_hat, age_gt)) # age
                 epoch_loss += diff 
                 local_step +=1
             
 
     # mse loss value (return)
     epoch_loss /= local_step
-    print ('Test Summary[{},{}] : MSE-Loss: {:.4f}'.format(ep, max_epoch, epoch_loss))
-    writer.add_scalar('train/age-loss', epoch_loss, ep)
+    print ('Test Summary[{}/{}] : MSE-Loss: {:.4f}'.format(ep, max_epoch, epoch_loss))
+    writer.add_scalar('test/age-loss', epoch_loss, ep)
+
+    print('Test Summary[{}/{}] : Recon-loss: {:.4f}'.format(
+        ep, max_epoch, epoch_recon_loss
+    ))
+    writer.add_scalar('test/recon-loss', epoch_recon_loss, ep)
 
     # acc
     preds = torch.cat(score_dict['pred_sex'])

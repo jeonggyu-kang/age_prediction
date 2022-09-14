@@ -198,15 +198,15 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
                 age_gt  = batch['gt_age_int'][bi].item()
                 age_hat = int((output_dict['age_hat'][bi] * 99 + 1. + 0.5).item())
                 diff = abs(age_gt - age_hat)
-                print('pred: {},  gt: {}'.format(age_hat, age_gt))
+                # print('pred: {},  gt: {}'.format(age_hat, age_gt)) # age
                 epoch_loss += diff 
                 local_step +=1
             
 
     # mse loss value (return)
     epoch_loss /= local_step
-    print ('Test Summary[{},{}] : MSE-Loss: {:.4f}'.format(ep, max_epoch, epoch_loss))
-    writer.add_scalar('train/age-loss', epoch_loss, ep)
+    print ('Test Summary[{}/{}] : MSE-Loss: {:.4f}'.format(ep, max_epoch, epoch_loss))
+    writer.add_scalar('test/age-loss', epoch_loss, ep)
 
     # acc
     preds = torch.cat(score_dict['pred_sex'])
