@@ -51,7 +51,10 @@ def tester(
     visualizer,
     confusion_matrix,
     csv = False,
-    hard_sample = False
+    hard_sample = False,
+    age_hard_sample = False,
+    age_ratio_thres = 10,
+    age_diff_thres = 0.2    
 ):
 
     pbar=tqdm(total=len(test_loader))
@@ -61,7 +64,10 @@ def tester(
         model, test_loader, writer,
         confusion_matrix = confusion_matrix,
         csv = csv,
-        hard_sample = hard_sample
+        hard_sample = hard_sample,
+        age_hard_sample = age_hard_sample,
+        age_ratio_thres = age_ratio_thres,
+        age_diff_thres = age_diff_thres   
     )
     
     writer.close()
@@ -162,7 +168,7 @@ def train(ep, max_epoch, model, train_loader, loss_mse, loss_ce, optimizer, writ
 
 
 @torch.no_grad() # stop calculating gradient
-def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_matrix=False, csv = False, hard_sample=False):
+def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_matrix=False, csv = False, hard_sample=False, age_hard_sample=False, age_diff_thres = None, age_ratio_thres = None):
     model.eval()
 
     epoch_loss = 0.0
@@ -182,7 +188,9 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
         'gt_sex' : [],
     }
 
-    hardsample_dict = get_sample_dict(2) 
+    hardsample_dict = get_sample_dict(2)
+    age_hardsample_list = []
+
 
     for i, batch in enumerate(test_loader):
         image = batch['image'].cuda()
@@ -205,8 +213,16 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
                 age_hat = int((output_dict['age_hat'][bi] * 99 + 1. + 0.5).item())
                 diff = abs(age_gt - age_hat)
                 # print('pred: {},  gt: {}'.format(age_hat, age_gt)) # age
+                ratio = diff / age_gt
+                if diff > age_diff_thres or ratio > age_ratio_thres:
+                    sample = batch['image'][bi].unsqueeze(0)
+                    age_hardsample_list.append((age_gt-age_hat), age_gt, age_hat, (age_gt-age_hat)/age_gt, sample)
+
+
                 epoch_loss += diff 
                 local_step +=1
+
+
 
         if hard_sample:
             hardsample_dict = update_hardsample_indice(
@@ -225,6 +241,7 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
                 age_gt = int(batch['gt_age_int'][bi].item()) # gt 
                 age_hat = int((output_dict['age_hat'][bi] * 99 + 1. + 0.5).item())
                 writer.export_csv(f_name, age_gt, age_hat)
+        
 
             
 
@@ -240,6 +257,11 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
     acc = torch.mean((preds.argmax(dim=1) == gt).float())
     print ('Test Summary[{}/{}] : Sex-Acc: {:.4f}'.format(ep, max_epoch, acc))
     writer.add_scalar('test/age-acc', acc, ep)
+
+
+    if age_hard_sample:
+        age_hardsample_list.sort()   # signed diff
+        print (age_hardsample_list)
 
     if hard_sample:
         index2cls_name = {

@@ -60,7 +60,10 @@ def main():
         visualizer = visualizer,
         confusion_matrix = True,
         csv = True,
-        hard_sample = True
+        hard_sample = True,   # sex_hard_sample
+        age_hard_sample = True,
+        age_ratio_thres = 10,
+        age_diff_thres = 0.2
 
     )
 
