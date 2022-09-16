@@ -43,7 +43,7 @@ def main():
         batch_size = args['batch_size'],
         num_workers = args['workers_per_gpu'],
         pipeline = args[mode]['pipeline'],
-        csv = False
+        csv = True
     )
 
     save_path = os.path.join(_args.log_root, 'eval')
@@ -58,7 +58,9 @@ def main():
         test_loader = test_loader,
         writer = writer,
         visualizer = visualizer,
-        confusion_matrix = True
+        confusion_matrix = True,
+        csv = True
+
     )
 
 

@@ -50,14 +50,16 @@ def tester(
     writer,
     visualizer,
     confusion_matrix,
-
+    csv = False
 ):
+
     pbar=tqdm(total=len(test_loader))
     print('Dataset length: {}'.format(len(test_loader)))
     acc = test(
         None,None,
         model, test_loader, writer,
         confusion_matrix = confusion_matrix,
+        csv = csv
     )
     
     writer.close()
@@ -158,7 +160,7 @@ def train(ep, max_epoch, model, train_loader, loss_mse, loss_ce, optimizer, writ
 
 
 @torch.no_grad() # stop calculating gradient
-def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_matrix=False):
+def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_matrix=False, csv = False):
     model.eval()
 
     epoch_loss = 0.0
@@ -201,6 +203,15 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
                 # print('pred: {},  gt: {}'.format(age_hat, age_gt)) # age
                 epoch_loss += diff 
                 local_step +=1
+
+        if csv:
+            B, _, _, _ = image.shape
+            for bi in range(B):
+                f_name = batch['f_name'][bi]
+                age_gt = int(batch['gt_age_int'][bi].item()) # gt 
+                age_hat = int((output_dict['age_hat'][bi] * 99 + 1. + 0.5).item())
+                writer.export_csv(f_name, age_gt, age_hat)
+
             
 
     # mse loss value (return)
