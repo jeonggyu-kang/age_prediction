@@ -59,7 +59,8 @@ def main():
         writer = writer,
         visualizer = visualizer,
         confusion_matrix = True,
-        csv = True
+        csv = True,
+        hard_sample = True
 
     )
 

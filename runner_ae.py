@@ -51,7 +51,8 @@ def tester_ae(
     writer,
     visualizer,
     confusion_matrix,
-    csv = False
+    csv = False,
+    hard_sample = False
 
 ):
     pbar=tqdm(total=len(test_loader))
@@ -60,7 +61,8 @@ def tester_ae(
         None,None,
         model, test_loader, writer,
         confusion_matrix = confusion_matrix,
-        csv = csv
+        csv = csv,
+        hard_sample = hard_sample
     )
     
     writer.close()
@@ -169,7 +171,7 @@ def train(ep, max_epoch, model, train_loader, loss_mse, loss_ce, optimizer, writ
 
 
 @torch.no_grad() # stop calculating gradient
-def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_matrix=False, csv = False):
+def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_matrix=False, csv = False, hard_sample=False):
     model.eval()
 
     epoch_loss = 0.0
@@ -191,6 +193,9 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
     }
      
     loss_mse2 = torch.nn.MSELoss() 
+
+    hardsample_dict = get_sample_dict(2) 
+
     for i, batch in enumerate(test_loader):
         image = batch['image'].cuda()
         gt_age = batch['gt_age'].cuda()
@@ -216,6 +221,15 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
                 # print('pred: {},  gt: {}'.format(age_hat, age_gt)) # age
                 epoch_loss += diff 
                 local_step +=1
+
+    
+        if hard_sample:
+            hardsample_dict = update_hardsample_indice(
+                output_dict['y2_hat'].detach().cpu(), 
+                batch['gt_sex'], 
+                hardsample_dict, 
+                batch['image']
+            )
 
         if csv:
             B, _, _, _ = image.shape
@@ -243,6 +257,21 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
     acc = torch.mean((preds.argmax(dim=1) == gt).float())
     print ('Test Summary[{}/{}] : Sex-Acc: {:.4f}'.format(ep, max_epoch, acc))
     writer.add_scalar('test/age-acc', acc, ep)
+
+    if hard_sample:
+        index2cls_name = {
+            0: 'Female',
+            1: 'Male',
+        }
+        for gt_k in hardsample_dict:
+            for pred_k, samples in hardsample_dict[gt_k].items():
+                if samples:
+                    num_sample = len(samples)
+                    text = str(index2cls_name[gt_k]) + '/' + str(index2cls_name[pred_k])
+                    samples = torch.cat(samples)
+                    grid_samples = vutils.make_grid(tensor_rgb2bgr(samples), normalize=True, scale_each=True)
+                    writer.add_image(text, grid_samples, 0)
+                    print('{} : {}'.format(text, num_sample))
 
     if confusion_matrix:
         cm_image = get_confusion_matrix_image(preds.detach().cpu(), gt.cpu(), normalize=False)

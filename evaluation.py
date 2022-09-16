@@ -102,13 +102,13 @@ def plot_dataset_dist(sample_dict, show=False):
 
 
 
-def get_sample_dict():
+def get_sample_dict(num_classes):
 
     ret = {}
 
-    for k in range(5):
+    for k in range(num_classes):
         ret[k] = {}
-        for v in range(5):
+        for v in range(num_classes):
             if k == v:
                 continue
             ret[k][v] = []
