@@ -18,8 +18,8 @@ _IMAGE_HEIGHT = 896
 
 # model-related params
 model_dict = dict(   
-    model_name = "AgePredictor",
-    # model_name = "CXRAutoencoder2", 
+    # model_name = "AgePredictor",
+    model_name = "CXRAutoencoder2", 
     z_common = 48,
     z_age = 24,
     z_sex = 24,           
@@ -29,7 +29,7 @@ model_dict = dict(
     mile_stone = [150, 180],
     decay_rate = 0.1,
     image_size = (_IMAGE_WIDTH, _IMAGE_HEIGHT),   # width, height
-    extra = ['baseline-test']    
+    extra = ['autoencodr_48_24_12']    
 )
 
 train_pipeline = [
@@ -72,7 +72,7 @@ test_pipeline = [
 data_dict = dict(
     dataset = 'AgeSexDataset',
     save_root = './work_dir',
-    batch_size = 64,
+    batch_size = 16,
     workers_per_gpu = 1,
 
     train = dict(

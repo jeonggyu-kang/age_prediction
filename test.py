@@ -29,7 +29,7 @@ def main():
 
     ckpt_path = os.path.join(_args.log_root, 'best.pt')
 
-    model = get_model(ckpt_path=ckpt_path)
+    model = get_model(model_name=args['model_name'], ckpt_path=ckpt_path)
 
             
 
