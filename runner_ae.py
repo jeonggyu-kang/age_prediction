@@ -224,7 +224,7 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
             B, _, _, _ = image.shape
             for bi in range(B):
                 age_gt  = batch['gt_age_int'][bi].item()
-                age_hat = int((output_dict['y1_hat'][bi] * 99 + 1. + 0.5).item())
+                age_hat = (output_dict['y1_hat'][bi] * 99 + 1.).item()
                 diff = abs(age_gt - age_hat)
                 # print('pred: {},  gt: {}'.format(age_hat, age_gt)) # age
                 ratio = diff / age_gt

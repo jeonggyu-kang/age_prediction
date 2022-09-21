@@ -248,7 +248,7 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
             for bi in range(B):
                 f_name = batch['f_name'][bi]
                 age_gt = int(batch['gt_age_int'][bi].item()) # gt 
-                age_hat = int((output_dict['age_hat'][bi] * 99 + 1. + 0.5).item())
+                age_hat = (output_dict['age_hat'][bi] * 99 + 1.).item()
                 writer.export_csv(f_name, age_gt, age_hat)
         
 
