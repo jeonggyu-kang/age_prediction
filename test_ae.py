@@ -34,7 +34,8 @@ def main():
         z_common = args['z_common'],
         z_age = args['z_age'],
         z_sex = args['z_sex'],
-        ckpt_path=ckpt_path
+        ckpt_path=ckpt_path,
+        input_shape = (2, 3, *args['image_size'])
     )
            
 

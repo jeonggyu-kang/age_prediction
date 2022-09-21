@@ -41,6 +41,8 @@ class SaveManager:
         return cam_path
 
     def export_csv(self, file_name, gt, pred):
+        pred = '{:2f}'.format(pred)
+        pred = float(pred)
         self.csv_writer.writerow([file_name, gt, pred])
 
     def add_scalar(self, text:str, value: float, global_step: int):
