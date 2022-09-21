@@ -3,6 +3,7 @@ import torch
 
 from evaluation import calc_accuracy, get_confusion_matrix_image, get_mean_squared_error
 from evaluation import get_sample_dict, update_hardsample_indice, draw_cam
+from evaluation import write_age_hard_sample
 import torchvision.utils as vutils
 from utils import tensor_rgb2bgr
 
@@ -52,7 +53,10 @@ def tester_ae(
     visualizer,
     confusion_matrix,
     csv = False,
-    hard_sample = False
+    hard_sample = False,
+    age_hard_sample = False,
+    age_ratio_thres = 10,
+    age_diff_thres = 0.2
 
 ):
     pbar=tqdm(total=len(test_loader))
@@ -62,7 +66,10 @@ def tester_ae(
         model, test_loader, writer,
         confusion_matrix = confusion_matrix,
         csv = csv,
-        hard_sample = hard_sample
+        hard_sample = hard_sample,
+        age_hard_sample = age_hard_sample,
+        age_ratio_thres = age_ratio_thres,
+        age_diff_thres = age_diff_thres
     )
     
     writer.close()
@@ -107,6 +114,9 @@ def train(ep, max_epoch, model, train_loader, loss_mse, loss_ce, optimizer, writ
 
         score_dict['pred_sex'].append(output_dict['y2_hat'].cpu())
         score_dict['gt_sex'].append(gt_sex.cpu()) 
+
+        print(image.shape)
+        print(output_dict['x_hat'].shape)
         
         loss_recon   = loss_mse(output_dict['x_hat'], image)
         loss_age     = loss_mse(output_dict['y1_hat'], gt_age)
@@ -171,7 +181,7 @@ def train(ep, max_epoch, model, train_loader, loss_mse, loss_ce, optimizer, writ
 
 
 @torch.no_grad() # stop calculating gradient
-def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_matrix=False, csv = False, hard_sample=False):
+def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_matrix=False, csv = False, hard_sample=False, age_diff_thres = None, age_hard_sample = False, age_ratio_thres = None ):
     model.eval()
 
     epoch_loss = 0.0
@@ -195,6 +205,7 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
     loss_mse2 = torch.nn.MSELoss() 
 
     hardsample_dict = get_sample_dict(2) 
+    age_hardsample_list = []
 
     for i, batch in enumerate(test_loader):
         image = batch['image'].cuda()
@@ -219,6 +230,20 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
                 age_hat = int((output_dict['y1_hat'][bi] * 99 + 1. + 0.5).item())
                 diff = abs(age_gt - age_hat)
                 # print('pred: {},  gt: {}'.format(age_hat, age_gt)) # age
+                ratio = diff / age_gt
+                if diff > age_diff_thres or ratio > age_ratio_thres:
+                    sample = batch['image'][bi].unsqueeze(0)
+                    
+                    signed_diff = age_gt - age_hat
+                    signed_diff_ratio = signed_diff / age_gt
+                    age_hardsample_list.append({
+                        'signed_diff' : signed_diff,
+                        'signed_diff_ratio' : signed_diff_ratio,
+                        'image' : batch['image'][bi]
+                        
+                    })
+
+
                 epoch_loss += diff 
                 local_step +=1
 
@@ -257,6 +282,16 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
     acc = torch.mean((preds.argmax(dim=1) == gt).float())
     print ('Test Summary[{}/{}] : Sex-Acc: {:.4f}'.format(ep, max_epoch, acc))
     writer.add_scalar('test/age-acc', acc, ep)
+
+    if age_hard_sample:
+        # write top & bottom N hard sample w.r.t signed age diff.
+        age_hardsample_list.sort(key = lambda x:x['signed_diff'])
+        write_age_hard_sample(age_hardsample_list, writer, 'diff')
+
+        # write top & bottom N hard sample w.r.t signed age diff ratio.
+        age_hardsample_list.sort(key = lambda x:x['signed_diff_ratio'])
+        write_age_hard_sample(age_hardsample_list, writer, 'ratio')        
+
 
     if hard_sample:
         index2cls_name = {

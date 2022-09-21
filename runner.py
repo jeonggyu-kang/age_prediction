@@ -3,6 +3,7 @@ import torch
 
 from evaluation import calc_accuracy, get_confusion_matrix_image, get_mean_squared_error
 from evaluation import get_sample_dict, update_hardsample_indice, draw_cam
+from evaluation import write_age_hard_sample
 import torchvision.utils as vutils
 from utils import tensor_rgb2bgr
 
@@ -216,7 +217,15 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
                 ratio = diff / age_gt
                 if diff > age_diff_thres or ratio > age_ratio_thres:
                     sample = batch['image'][bi].unsqueeze(0)
-                    age_hardsample_list.append((age_gt-age_hat), age_gt, age_hat, (age_gt-age_hat)/age_gt, sample)
+                    
+                    signed_diff = age_gt - age_hat
+                    signed_diff_ratio = signed_diff / age_gt
+                    age_hardsample_list.append({
+                        'signed_diff' : signed_diff,
+                        'signed_diff_ratio' : signed_diff_ratio,
+                        'image' : batch['image'][bi]
+                        
+                    })
 
 
                 epoch_loss += diff 
@@ -260,8 +269,13 @@ def test(ep, max_epoch, model, test_loader, writer, loss_mse=None, confusion_mat
 
 
     if age_hard_sample:
-        age_hardsample_list.sort()   # signed diff
-        print (age_hardsample_list)
+        # write top & bottom N hard sample w.r.t signed age diff.
+        age_hardsample_list.sort(key = lambda x:x['signed_diff'])
+        write_age_hard_sample(age_hardsample_list, writer, 'diff')
+
+        # write top & bottom N hard sample w.r.t signed age diff ratio.
+        age_hardsample_list.sort(key = lambda x:x['signed_diff_ratio'])
+        write_age_hard_sample(age_hardsample_list, writer, 'ratio')        
 
     if hard_sample:
         index2cls_name = {

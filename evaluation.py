@@ -12,6 +12,8 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import cv2 
 import torch 
+import torchvision.utils as vutils
+from utils import tensor_rgb2bgr
 
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from pytorch_grad_cam.utils.image import show_cam_on_image
@@ -163,3 +165,35 @@ def draw_cam(cam, input_tensor, gt, n_class, writer):
     plt.savefig(path)
     plt.close()
     
+def write_age_hard_sample(samples, writer, text, num_hard_sample = 5):
+    age_hard_top =[]
+    age_hard_bot =[]
+
+    tail = len(samples) -1
+
+    for head in range(len(samples)):
+        if head == num_hard_sample:
+            break
+        elif head > tail:
+            break
+
+        age_hard_top.append(samples[head]['image'].unsqueeze(0))   # 3 224 224 -> 1 3 224 224
+
+        if len(samples) >= num_hard_sample:   # bottom
+            age_hard_bot.append(samples[tail]['image'].unsqueeze(0))
+            tail -=1
+
+    if age_hard_top:
+        batched_age_hard_top = torch.cat(age_hard_top)   # N x 3 224 224    
+        grid_samples = vutils.make_grid(tensor_rgb2bgr(batched_age_hard_top), normalize=True, scale_each=True )
+
+        writer.add_image('test/age-hard-{}/topN'.format(text), grid_samples, 0)
+
+    if age_hard_bot:
+        batched_age_hard_bot = torch.cat(age_hard_bot)   # N x 3 224 224    
+        grid_samples = vutils.make_grid(tensor_rgb2bgr(batched_age_hard_bot), normalize=True, scale_each=True )
+
+        writer.add_image('test/age-hard-{}/botN'.format(text), grid_samples, 0)
+
+
+

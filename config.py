@@ -13,23 +13,23 @@ def get_hyperparameters(config = None):
 
     return ret
 
-_IMAGE_WIDTH = 896
-_IMAGE_HEIGHT = 896
+_IMAGE_WIDTH = 448
+_IMAGE_HEIGHT = 448
 
 # model-related params
 model_dict = dict(   
     # model_name = "AgePredictor",
     model_name = "CXRAutoencoder2", 
-    z_common = 48,
-    z_age = 24,
-    z_sex = 24,           
+    z_common = 24,
+    z_age = 12,
+    z_sex = 6,           
     max_epoch = 200,
     learning_rate = 1e-4,
     # mile_stone = None,
-    mile_stone = [150, 180],
+    mile_stone = [160, 180],
     decay_rate = 0.1,
     image_size = (_IMAGE_WIDTH, _IMAGE_HEIGHT),   # width, height
-    extra = ['autoencodr_48_24_12']    
+    extra = ['autoencoder_24_24_6']    
 )
 
 train_pipeline = [
@@ -42,8 +42,8 @@ train_pipeline = [
 
     dict(
         type = 'Contrastive',
-        p = 0.0,
-        w = 1.5
+        p = 0.5,
+        w = 1.3
     ),
 
     dict(
