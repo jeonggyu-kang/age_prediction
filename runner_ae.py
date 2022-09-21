@@ -114,9 +114,6 @@ def train(ep, max_epoch, model, train_loader, loss_mse, loss_ce, optimizer, writ
 
         score_dict['pred_sex'].append(output_dict['y2_hat'].cpu())
         score_dict['gt_sex'].append(gt_sex.cpu()) 
-
-        print(image.shape)
-        print(output_dict['x_hat'].shape)
         
         loss_recon   = loss_mse(output_dict['x_hat'], image)
         loss_age     = loss_mse(output_dict['y1_hat'], gt_age)

@@ -24,6 +24,14 @@ class CXRAutoencoder2(nn.Module):
     ):
         super(CXRAutoencoder2, self).__init__()
 
+        _, _, org_height, org_width = input_shape
+        bottle_neck_height = org_height // 32
+        bottle_neck_width  = org_width  // 32
+
+        print ('bottle_neck size: ', bottle_neck_height, bottle_neck_width)
+
+        assert org_height >= 224 and org_width >= 224
+
         # encoder 
         self.encoder = modules.resnet18(pretrained = True)
         bottleneck_shape = _get_eleme_num(self.encoder, torch.randn(input_shape))
@@ -42,7 +50,7 @@ class CXRAutoencoder2(nn.Module):
             block=modules.BasicBlock,
             global_avg_pool = True,
             z_all = z_dim,
-            bottleneck_shape = (2048, 28, 28)
+            bottleneck_shape = (2048, bottle_neck_height, bottle_neck_width)
         )
         
         self.sex_classifier = nn.Sequential(

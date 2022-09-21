@@ -20,6 +20,7 @@ def main():
     args = get_hyperparameters()                 #             
 
     model = get_model(
+        input_shape = (2, 3, *args['image_size']),
         model_name = args['model_name'],
         z_common = args['z_common'],
         z_age = args['z_age'],

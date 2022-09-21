@@ -13,8 +13,8 @@ def get_hyperparameters(config = None):
 
     return ret
 
-_IMAGE_WIDTH = 448
-_IMAGE_HEIGHT = 448
+_IMAGE_WIDTH = 896
+_IMAGE_HEIGHT = 896
 
 # model-related params
 model_dict = dict(   
